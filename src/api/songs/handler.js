@@ -14,6 +14,7 @@ class SongsHandler {
     const { query } = request;
     const result = await this._service.getAllSongs(query);
     return {
+      status: 'success',
       data: {
         songs: result,
       },
@@ -24,6 +25,7 @@ class SongsHandler {
     const { params } = request;
     const result = await this._service.getSongById(params);
     return {
+      status: 'success',
       data: {
         song: result,
       },
@@ -46,21 +48,31 @@ class SongsHandler {
 
   async putSongByIdHandler(request) {
     const { payload } = request;
-    const { params } = request;
+    const { id } = request.params;
+
     this._validator.validateSongPayload(payload);
-    const result = await this._service.editSongById({ ...params, ...payload });
+    await this._service.editSongById({ id, ...payload });
+
     return {
       status: 'success',
-      message: result,
+      message: 'Lagu berhasil diperbarui',
+      data: {
+        songId: id,
+      },
     };
   }
 
   async deleteSongByIdHandler(request) {
-    const { params } = request;
-    const result = await this._service.deleteSongById(params);
+    const { id } = request.params;
+
+    await this._service.deleteSongById({ id });
+
     return {
       status: 'success',
-      message: result,
+      message: 'Lagu berhasil dihapus',
+      data: {
+        songId: id,
+      },
     };
   }
 }
