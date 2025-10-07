@@ -25,7 +25,8 @@
             "error",
             {
                 "allow": [
-                    "album_id"
+                    "album_id",
+                    "songs_result"
                 ]
             }
         ]
