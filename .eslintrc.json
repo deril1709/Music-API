@@ -11,24 +11,6 @@
     },
     "rules": {
         "no-console": "off",
-        "no-underscore-dangle": [
-            "error",
-            {
-                "allow": [
-                    "_service",
-                    "_validator",
-                    "_pool"
-                ]
-            }
-        ],
-        "camelcase": [
-            "error",
-            {
-                "allow": [
-                    "album_id",
-                    "songs_result"
-                ]
-            }
-        ]
+        "no-underscore-dangle": "off"
     }
 }
