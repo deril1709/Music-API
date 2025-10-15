@@ -27,6 +27,31 @@ class UsersService {
     return result.rows[0].id;
   }
 
+  async verifyUserCredential(username, password) {
+  const query = {
+    text: 'SELECT id, password FROM users WHERE username = $1',
+    values: [username],
+  };
+
+  const result = await this._pool.query(query);
+
+  // jika user tidak ditemukan
+  if (!result.rows.length) {
+    throw new InvariantError('Kredensial yang Anda berikan salah');
+  }
+
+  const { id, password: hashedPassword } = result.rows[0];
+
+  // bandingkan password
+  const match = await bcrypt.compare(password, hashedPassword);
+
+  if (!match) {
+    throw new InvariantError('Kredensial yang Anda berikan salah');
+  }
+
+  return id;
+}
+
   async verifyNewUsername(username) {
     const query = {
       text: 'SELECT username FROM users WHERE username = $1',
