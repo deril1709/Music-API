@@ -112,6 +112,16 @@ const init = async () => {
   },
   ]);
 
+  server.route({
+  method: 'GET',
+  path: '/',
+  handler: () => ({
+    status: 'success',
+    message: 'OpenMusic API is running on port ' + process.env.PORT,
+  }),
+});
+
+
   server.ext('onPreResponse', (request, h) => {
     const { response } = request;
     if (response instanceof ClientError) {
