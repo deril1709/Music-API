@@ -106,10 +106,12 @@ const init = async () => {
     {
     plugin: playlists,
     options: {
-      service: playlistsService,
+      playlistsService,
+      songsService,   // <- pastikan ini ada!
       validator: PlaylistsValidator,
     },
-  },
+  }
+,
   ]);
 
   server.route({
@@ -135,6 +137,9 @@ const init = async () => {
     if (response.isBoom) {
       console.error(response); // <<< ini penting biar error tampil di console
     }
+    if (response.isBoom) {
+    console.error('🔥 INTERNAL ERROR:', response); // tambahkan ini
+  }
     return h.continue;
   });
 

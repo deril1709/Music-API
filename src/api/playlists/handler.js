@@ -1,25 +1,31 @@
 class PlaylistsHandler {
-  constructor(service, validator) {
-    this._service = service;
+  constructor(playlistsService, songsService, validator) {
+    this._playlistsService = playlistsService;
+    this._songsService = songsService;
     this._validator = validator;
 
     this.postPlaylistHandler = this.postPlaylistHandler.bind(this);
     this.getPlaylistsHandler = this.getPlaylistsHandler.bind(this);
     this.deletePlaylistByIdHandler = this.deletePlaylistByIdHandler.bind(this);
-    this.postPlaylistSongByPlaylistIdHandler = this.postPlaylistSongByPlaylistIdHandler.bind(this);
-    this.getPlaylistSongsByPlaylistIdHandler = this.getPlaylistSongsByPlaylistIdHandler.bind(this);
-    this.deletePlaylistSongByPlaylistIdHandler = this.deletePlaylistSongByPlaylistIdHandler.bind(this);
-    this.getPlaylistActivitiesByPlaylistIdHandler = this.getPlaylistActivitiesByPlaylistIdHandler.bind(this);
+    this.postSongToPlaylistHandler = this.postSongToPlaylistHandler.bind(this);
+    this.getSongsFromPlaylistHandler = this.getSongsFromPlaylistHandler.bind(this);
+    this.deleteSongFromPlaylistHandler = this.deleteSongFromPlaylistHandler.bind(this);
   }
 
   async postPlaylistHandler(request, h) {
-    this._validator.validatePostPlaylistPayloadSchema(request.payload);
-    const { name } = request.payload;
-    const { id: owner } = request.auth.credentials;
+    this._validator.validatePostPlaylistPayload(request.payload);
 
-    const playlistId = await this._service.addPlaylist({ name, owner });
+    const { name } = request.payload;
+    const { id: credentialId } = request.auth.credentials;
+
+    const playlistId = await this._playlistsService.addPlaylist({
+      name,
+      owner: credentialId,
+    });
 
     const response = h.response({
+      status: 'success',
+      message: 'Playlist berhasil ditambahkan',
       data: { playlistId },
     });
     response.code(201);
@@ -27,36 +33,38 @@ class PlaylistsHandler {
   }
 
   async getPlaylistsHandler(request) {
-    const { id: owner } = request.auth.credentials;
-    const playlists = await this._service.getPlaylists(owner);
+    const { id: credentialId } = request.auth.credentials;
+    const playlists = await this._playlistsService.getPlaylists(credentialId);
+
     return {
+      status: 'success',
       data: { playlists },
     };
   }
 
   async deletePlaylistByIdHandler(request) {
-    const { id: playlistId } = request.params;
-    const { id: owner } = request.auth.credentials;
-    await this._service.verifyPlaylistOwner(playlistId, owner);
-    await this._service.deletePlaylist({ playlistId });
+    const { id } = request.params;
+    const { id: credentialId } = request.auth.credentials;
+
+    await this._playlistsService.verifyPlaylistOwner(id, credentialId);
+    await this._playlistsService.deletePlaylistById(id);
+
     return {
+      status: 'success',
       message: 'Playlist berhasil dihapus',
     };
   }
 
-  async postPlaylistSongByPlaylistIdHandler(request, h) {
+  async postSongToPlaylistHandler(request, h) {
+    this._validator.validatePostSongToPlaylistPayload(request.payload);
+
     const { id: playlistId } = request.params;
-    const { id: owner } = request.auth.credentials;
-    await this._service.verifyPlaylistAccess(playlistId, owner);
-    this._validator.validatePostPlaylistSongPayloadSchema(request.payload);
     const { songId } = request.payload;
-    await this._service.addSongToPlaylist({ playlistId, songId });
-    await this._service.addPlaylistActivities({
-      playlistId,
-      songId,
-      userId: owner,
-      action: 'add',
-    });
+    const { id: credentialId } = request.auth.credentials;
+
+    await this._playlistsService.verifyPlaylistAccess(playlistId, credentialId);
+    await this._songsService.getSongById(songId);
+    await this._playlistsService.addSongToPlaylist(playlistId, songId);
 
     const response = h.response({
       status: 'success',
@@ -66,43 +74,32 @@ class PlaylistsHandler {
     return response;
   }
 
-  async getPlaylistSongsByPlaylistIdHandler(request) {
+  async getSongsFromPlaylistHandler(request) {
     const { id: playlistId } = request.params;
-    const { id: owner } = request.auth.credentials;
-    await this._service.verifyPlaylistAccess(playlistId, owner);
-    const { playlist } = await this._service.getPlaylistSongs({ playlistId });
+    const { id: credentialId } = request.auth.credentials;
+
+    await this._playlistsService.verifyPlaylistAccess(playlistId, credentialId);
+    const songs = await this._playlistsService.getSongsFromPlaylist(playlistId);
+
     return {
-      data: { playlist },
+      status: 'success',
+      data: { songs },
     };
   }
 
-  async deletePlaylistSongByPlaylistIdHandler(request) {
+  async deleteSongFromPlaylistHandler(request) {
+    this._validator.validateDeleteSongFromPlaylistPayload(request.payload);
+
     const { id: playlistId } = request.params;
-    const { id: owner } = request.auth.credentials;
-    await this._service.verifyPlaylistAccess(playlistId, owner);
     const { songId } = request.payload;
-    await this._service.deletePlaylistSong({ playlistId, songId });
-    await this._service.addPlaylistActivities({
-      playlistId,
-      songId,
-      userId: owner,
-      action: 'delete',
-    });
-    return {
-      message: 'Lagu berhasil dihapus dari playlist',
-    };
-  }
+    const { id: credentialId } = request.auth.credentials;
 
-  async getPlaylistActivitiesByPlaylistIdHandler(request) {
-    const { id: playlistId } = request.params;
-    const { id: owner } = request.auth.credentials;
-    await this._service.verifyPlaylistAccess(playlistId, owner);
-    const playlistActivities = await this._service.getPlaylistActivities({ playlistId });
+    await this._playlistsService.verifyPlaylistAccess(playlistId, credentialId);
+    await this._playlistsService.deleteSongFromPlaylist(playlistId, songId);
+
     return {
-      data: {
-        playlistId,
-        activities: playlistActivities,
-      },
+      status: 'success',
+      message: 'Lagu berhasil dihapus dari playlist',
     };
   }
 }
