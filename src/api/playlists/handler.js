@@ -1,5 +1,6 @@
 class PlaylistsHandler {
   constructor(playlistsService, songsService, validator) {
+    console.log('DEBUG playlistsService:', playlistsService);
     this._playlistsService = playlistsService;
     this._songsService = songsService;
     this._validator = validator;
@@ -63,7 +64,7 @@ class PlaylistsHandler {
     const { id: credentialId } = request.auth.credentials;
 
     await this._playlistsService.verifyPlaylistAccess(playlistId, credentialId);
-    await this._songsService.getSongById(songId);
+    await this._songsService.getSongById({ id: songId });
     await this._playlistsService.addSongToPlaylist(playlistId, songId);
 
     const response = h.response({
@@ -74,18 +75,43 @@ class PlaylistsHandler {
     return response;
   }
 
-  async getSongsFromPlaylistHandler(request) {
-    const { id: playlistId } = request.params;
-    const { id: credentialId } = request.auth.credentials;
+  async getSongsFromPlaylistHandler(request, h) {
+  const { id: playlistId } = request.params;
+  const { id: credentialId } = request.auth.credentials;
 
-    await this._playlistsService.verifyPlaylistAccess(playlistId, credentialId);
-    const songs = await this._playlistsService.getSongsFromPlaylist(playlistId);
+  await this._playlistsService.verifyPlaylistAccess(playlistId, credentialId);
 
-    return {
-      status: 'success',
-      data: { songs },
-    };
-  }
+  // ambil detail playlist (id, name, username)
+  const queryPlaylist = {
+    text: `
+      SELECT playlists.id, playlists.name, users.username
+      FROM playlists
+      LEFT JOIN users ON users.id = playlists.owner
+      WHERE playlists.id = $1
+    `,
+    values: [playlistId],
+  };
+  const result = await this._playlistsService._pool.query(queryPlaylist);
+  const playlist = result.rows[0];
+
+  // ambil daftar lagu di playlist
+  const songs = await this._playlistsService.getSongsFromPlaylist(playlistId);
+
+  const response = h.response({
+    status: 'success',
+    data: {
+      playlist: {
+        id: playlist.id,
+        name: playlist.name,
+        username: playlist.username,
+        songs,
+      },
+    },
+  });
+  response.code(200);
+  return response;
+}
+
 
   async deleteSongFromPlaylistHandler(request) {
     this._validator.validateDeleteSongFromPlaylistPayload(request.payload);
